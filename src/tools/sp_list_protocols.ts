@@ -52,7 +52,7 @@ const ISO_UTC = z.preprocess(
   z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/, "Expected YYYY-MM-DDTHH:mm:ssZ")
 );
 
-const Input = z
+export const SpListProtocolsInputSchema = z
   .object({
     pageSize: PageSize,
     cursor: NullStringToNull.pipe(z.string().nullable()).optional(),
@@ -60,7 +60,7 @@ const Input = z
   })
   .strict();
 
-type InputT = z.infer<typeof Input>;
+type InputT = z.infer<typeof SpListProtocolsInputSchema>;
 
 type GraphCollection<T> = {
   value: T[];
@@ -86,7 +86,7 @@ export async function sp_list_protocols(
   rawInput: unknown,
   requestId: string
 ) {
-  const parsed = Input.safeParse(rawInput);
+  const parsed = SpListProtocolsInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     throw new AppError(400, "ValidationError", "Invalid input", {
       issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message }))
@@ -96,6 +96,10 @@ export async function sp_list_protocols(
 
   const pageSize = input.pageSize;
   const modifiedAfter = input.modifiedAfter ?? null;
+  const modifiedAfterMs = modifiedAfter ? Date.parse(modifiedAfter) : null;
+  if (modifiedAfter && !Number.isFinite(modifiedAfterMs)) {
+    throw new AppError(400, "ValidationError", "Invalid modifiedAfter", { path: "modifiedAfter" });
+  }
 
   // Cursor contains: nextLink + buffer (for deterministic client-side filtering)
   let nextLink: string | null = null;
@@ -161,9 +165,10 @@ export async function sp_list_protocols(
         return !!fp && (fp === scope.inputPrefix || fp.startsWith(`${scope.inputPrefix}/`));
       })
       .filter((it) => {
-        if (!modifiedAfter) return true;
+        if (!modifiedAfterMs) return true;
         const lm = it.lastModifiedDateTime ?? "";
-        return lm >= modifiedAfter;
+        const lmMs = Date.parse(lm);
+        return Number.isFinite(lmMs) && lmMs >= modifiedAfterMs;
       })
       .map(asListItem);
 

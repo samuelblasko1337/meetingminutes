@@ -35,7 +35,7 @@ const Boolish = z.preprocess((v) => {
   return v;
 }, z.boolean());
 
-const Input = z
+export const SpDownloadProtocolInputSchema = z
   .object({
     id: z.string().min(1),
     asText: Boolish
@@ -56,9 +56,10 @@ export async function sp_download_protocol(
   scope: Scope,
   log: pino.Logger,
   rawInput: unknown,
-  requestId: string
+  requestId: string,
+  maxDownloadBytes: number
 ) {
-  const parsed = Input.safeParse(rawInput);
+  const parsed = SpDownloadProtocolInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     throw new AppError(400, "ValidationError", "Invalid input", {
       issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message }))
@@ -67,6 +68,13 @@ export async function sp_download_protocol(
   const { id, asText } = parsed.data;
 
   const { item } = await fetchAndValidateDriveItem(graph, scope, id, "download");
+  if (item.size != null && item.size > maxDownloadBytes) {
+    throw new AppError(413, "PayloadTooLarge", "File too large to download", {
+      requestedId: id,
+      size: item.size,
+      maxBytes: maxDownloadBytes
+    });
+  }
 
   if (item.folder) throw new AppError(400, "BadRequest", "Cannot download a folder", { requestedId: id });
 

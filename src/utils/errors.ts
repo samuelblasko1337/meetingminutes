@@ -9,6 +9,7 @@ export type AppErrorCode =
   | "GraphError"
   | "Conflict"
   | "BadRequest"
+  | "PayloadTooLarge"
   | "InternalError";
 
 export class AppError extends Error {

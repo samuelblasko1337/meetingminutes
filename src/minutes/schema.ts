@@ -108,7 +108,7 @@ export const Tool3InputSchema = z
     minutes: JsonStringToObject(MinutesSchema),
     output: JsonStringToObject(
       z.object({
-        fileName: NullishStringToNull(z.string().min(1).max(200).nullable()).optional()
+        fileName: NullishStringToNull(z.string().min(1).max(120).nullable()).optional()
       }).strict()
     )
   })

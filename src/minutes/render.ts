@@ -53,7 +53,20 @@ export function renderMinutesDocx(templatePath: string, input: RenderInput): Buf
   doc.setData(data);
   doc.render();
 
-  return doc
-    .getZip()
-    .generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer;
+  const outZip = doc.getZip();
+  const fixedDate = new Date(Date.UTC(1980, 0, 1, 0, 0, 0));
+
+  const orderedNames = Object.keys(outZip.files).sort();
+  const stableZip = new PizZip();
+  for (const name of orderedNames) {
+    const file: any = outZip.files[name];
+    if (file?.dir) {
+      stableZip.file(name, "", { dir: true, date: fixedDate });
+    } else {
+      const data = file.asUint8Array();
+      stableZip.file(name, data, { date: fixedDate });
+    }
+  }
+
+  return stableZip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer;
 }

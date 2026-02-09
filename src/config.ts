@@ -10,7 +10,8 @@ import { z } from "zod";
 const CommonSchema = z.object({
   DOCX_TEMPLATE_PATH: z.string().min(1),
   OUTPUT_FILENAME_PATTERN: z.string().default("{date}__{title}__Minutes.docx"),
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info")
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  MAX_DOWNLOAD_BYTES: z.coerce.number().int().min(1).max(50_000_000).default(10_000_000)
 });
 
 const GraphSchema = z
