@@ -50,8 +50,7 @@ export function renderMinutesDocx(templatePath: string, input: RenderInput): Buf
     trace: `source=${input.trace.transcriptId} etag=${input.trace.transcriptEtag} name=${input.trace.transcriptName}`
   };
 
-  doc.setData(data);
-  doc.render();
+  doc.render(data);
 
   const outZip = doc.getZip();
   const fixedDate = new Date(Date.UTC(1980, 0, 1, 0, 0, 0));
