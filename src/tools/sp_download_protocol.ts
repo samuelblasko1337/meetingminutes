@@ -67,7 +67,7 @@ export async function sp_download_protocol(
   }
   const { id, asText } = parsed.data;
 
-  const { item } = await fetchAndValidateDriveItem(graph, scope, id, "download");
+  const { item, fullPath } = await fetchAndValidateDriveItem(graph, scope, id, "download");
   if (item.size != null && item.size > maxDownloadBytes) {
     throw new AppError(413, "PayloadTooLarge", "File too large to download", {
       requestedId: id,
@@ -95,7 +95,13 @@ export async function sp_download_protocol(
     durationMs,
     itemId: id,
     fileName: name,
-    size: item.size ?? null
+    size: item.size ?? null,
+    audit: {
+      action: "read",
+      userKey: scope.userKey ?? null,
+      path: fullPath,
+      timestamp: new Date().toISOString()
+    }
   });
 
   if (!res.ok) {

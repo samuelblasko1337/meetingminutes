@@ -132,7 +132,14 @@ export async function minutes_render_and_upload_docx(
     transcriptId: input.source.transcriptId,
     transcriptEtag: input.source.transcriptEtag,
     outputFileName: finalName,
-    size: docx.length
+    size: docx.length,
+    audit: {
+      action: "write",
+      userKey: scope.userKey ?? null,
+      itemId: uploaded.id,
+      path: `${scope.outputPrefix}/${finalName}`,
+      timestamp: new Date().toISOString()
+    }
   });
 
   return {

@@ -195,6 +195,18 @@ export async function sp_list_protocols(
         })
       : null;
 
+  log.info({
+    requestId,
+    toolName: "sp_list_protocols",
+    audit: {
+      action: "read_list",
+      userKey: scope.userKey ?? null,
+      folderId: scope.inputFolderId,
+      count: itemsOut.length,
+      timestamp: new Date().toISOString()
+    }
+  });
+
   return {
     items: itemsOut,
     nextCursor

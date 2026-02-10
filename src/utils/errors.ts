@@ -2,6 +2,7 @@
 import type { ZodError } from "zod";
 
 export type AppErrorCode =
+  | "Unauthorized"
   | "Forbidden"
   | "NotFound"
   | "ValidationError"

@@ -1,5 +1,5 @@
 // FILE: src/graph/client.ts
-import { Client, ResponseType } from "@microsoft/microsoft-graph-client";
+import { Client, ResponseType, type AuthenticationProvider } from "@microsoft/microsoft-graph-client";
 import { ClientSecretCredential } from "@azure/identity";
 import { TokenCredentialAuthenticationProvider } from "@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials/index.js";
 import { AuthenticationHandler, HTTPMessageHandler, TelemetryHandler, RedirectHandler } from "@microsoft/microsoft-graph-client";
@@ -22,12 +22,7 @@ function toAbsoluteGraphUrl(urlOrPath: string): string {
   return `https://graph.microsoft.com/v1.0${urlOrPath}`;
 }
 
-export function createGraph(config: GraphConfig, log: pino.Logger): Graph {
-  const credential = new ClientSecretCredential(config.TENANT_ID, config.CLIENT_ID, config.CLIENT_SECRET);
-  const authProvider = new TokenCredentialAuthenticationProvider(credential, {
-    scopes: ["https://graph.microsoft.com/.default"]
-  });
-
+function createGraphWithAuthProvider(authProvider: AuthenticationProvider, log: pino.Logger): Graph {
   // Minimal chain: auth -> telemetry -> retry-after -> redirect -> http
   const middleware = [
     new AuthenticationHandler(authProvider),
@@ -99,4 +94,19 @@ export function createGraph(config: GraphConfig, log: pino.Logger): Graph {
   }
 
   return { client, request, requestRaw };
+}
+
+export function createGraph(config: GraphConfig, log: pino.Logger): Graph {
+  const credential = new ClientSecretCredential(config.TENANT_ID, config.CLIENT_ID, config.CLIENT_SECRET);
+  const authProvider = new TokenCredentialAuthenticationProvider(credential, {
+    scopes: ["https://graph.microsoft.com/.default"]
+  });
+  return createGraphWithAuthProvider(authProvider, log);
+}
+
+export function createGraphWithAccessToken(accessToken: string, log: pino.Logger): Graph {
+  const authProvider: AuthenticationProvider = {
+    getAccessToken: async () => accessToken
+  };
+  return createGraphWithAuthProvider(authProvider, log);
 }

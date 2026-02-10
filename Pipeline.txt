@@ -1,0 +1,98 @@
+KURZÜBERSICHT WORKFLOW
+
+1. Client/Host ruft MCP per HTTP `/mcp` mit `Authorization: Bearer <JWT>` auf.  
+2. Server extrahiert Bearer und reicht Token als `extra.authInfo.token` weiter. `\src\index.ts`  
+3. `buildContext` erstellt per_user‑Kontext je Tool‑Call. `\src\index.ts`  
+4. `userKey` aus JWT‑Payload (nur decode + `exp`‑Check). `\src\auth\userIdentity.ts`  
+5. Delegated Graph Token via Destination Token Exchange. `\src\btp\destination.ts`  
+6. Auto‑Provisioning: `/LillyMinutes/{userKey}/input|output`. `\src\sharepoint\userFolders.ts`  
+7. Scope/Guards binden auf Drive/Site + Prefix‑Checks. `\src\sharepoint\scope.ts`  
+8. `sp_list_protocols` listet Input; `sp_download_protocol` lädt nur aus Input. `\src\tools\sp_list_protocols.ts`, `C:\Users\samuelblasko\MeetingMinutes\src\tools\sp_download_protocol.ts`  
+9. Host liefert Minutes‑JSON; `minutes_render_and_upload_docx` validiert + ETag‑Check. `\src\tools\minutes_render_and_upload_docx.ts`  
+10. DOCX‑Render mit Docxtemplater, Upload ausschließlich in Output. `\src\minutes\render.ts`
+
+
+Offene Entscheidungen/To‑Dos (nur aus Repo)
+
+Code-seitig wären als nächste saubere Schritte: persistentes Audit (Compliance), optional JWKS-Signaturprüfung (Defence-in-depth) und optional härtere Host/Origin-Policy (Absicherung gegen Fehl-Exposure). Der Kernschutz kommt primär über AppRouter + delegated Graph + per-user Scope-Guards.
+
+
+
+
+
+
+
+WORKFLOW (1..N) – End‑to‑End bis DOCX in SharePoint
+
+Der Client/Host (Chatbot) hat ein User‑JWT (SSO/XSUAA) und ruft den MCP‑Server via HTTP POST /mcp auf. Komponenten: Client/Host → MCP‑Server (HTTP). Daten/Token: Authorization: Bearer <JWT> + MCP JSON‑RPC. Code: index.ts, http_smoke_test.ts.
+Der Server extrahiert den Bearer‑Token und hängt ihn an req.auth.token; der Streamable‑HTTP‑Transport reicht ihn als extra.authInfo.token an die Tool‑Handler weiter. Komponenten: MCP‑Server + MCP‑SDK. Daten/Token: User‑JWT pro Request. Code: index.ts (extractBearerToken, req.auth, StreamableHTTPServerTransport), bestätigt in Pipeline.txt und http_smoke_test.ts.
+Pro Tool‑Call wird der per_user‑Kontext gebaut: JWT‑Payload → userKey, dann Delegated Graph Token via Destination, anschließend Graph‑Client. Komponenten: MCP‑Server, BTP Destination, Graph. Daten/Token: User‑JWT → Destination‑Service‑Token → Delegated Graph Token. Code: index.ts (buildContext), userIdentity.ts (getUserIdentityFromJwt), destination.ts (getDelegatedGraphToken), client.ts (createGraphWithAccessToken).
+Der Server stellt sicher, dass /LillyMinutes/{userKey}/input und /output existieren (Auto‑Provisioning), und berechnet die Prefixe fürs Scoping. Komponenten: MCP‑Server, Graph, SharePoint. Daten/Token: Delegated Graph Token, SITE_ID, DRIVE_ID, BASE_FOLDER_NAME. Code: scope.ts (initUserScope), userFolders.ts (ensureUserFolders).
+Der Host ruft die Tools auf: sp_list_protocols listet Dateien im Input‑Ordner; sp_download_protocol lädt eine Datei (optional mit Text‑Extraktion). Komponenten: MCP‑Server, Graph, SharePoint. Daten/Token: Delegated Graph Token, Input‑Ordner‑IDs. Code: sp_list_protocols.ts, sp_download_protocol.ts, scope.ts.
+Außerhalb dieses Repos: Der Host/LLM analysiert den Inhalt und erzeugt strukturierte Minutes‑Daten gemäß Schema. Annahme aus deinem Kontext; im Repo gibt es keine LLM‑Analyse. Relevantes Schema: schema.ts.
+minutes_render_and_upload_docx validiert die Minutes, prüft die Transcript‑ETag‑Kohärenz, rendert DOCX und lädt nach /output hoch. Komponenten: MCP‑Server, Docxtemplater, Graph, SharePoint. Daten/Token: Minutes‑JSON, Transcript‑Metadaten, Delegated Graph Token, Template‑Datei. Code: minutes_render_and_upload_docx.ts, render.ts.
+Code‑Map (wo passiert was)
+
+Server Start/Transport: index.ts (main, StreamableHTTPServerTransport, StdioServerTransport).
+Auth‑Kontext/Token‑Handling: index.ts (extractBearerToken, buildContext, req.auth).
+User Identity → userKey: userIdentity.ts (getUserIdentityFromJwt, normalizeUserKey).
+Delegated Graph Token (BTP Destination): destination.ts (getDelegatedGraphToken).
+per_user Folder Provisioning: userFolders.ts (ensureUserFolders).
+Scope / Guards: scope.ts (initUserScope, fetchAndValidateDriveItem, validateItemIsWithinInput, validateItemIsWithinOutput).
+Tools: sp_list_protocols.ts, sp_download_protocol.ts, minutes_render_and_upload_docx.ts, Registry in registry.ts.
+DOCX Rendering: render.ts (renderMinutesDocx).
+Guards (Confidentiality)
+
+per_user Scope‑Isolation: Ordnerstruktur /LillyMinutes/{userKey}/input|output + Prefix‑Checks. Code: scope.ts (initUserScope, pathStartsWith).
+Drive/Site‑Bindung: Drive muss zur Site passen. Code: scope.ts (ensureDriveInSite, Drive‑ID‑Checks).
+Input‑Only Reads: sp_download_protocol nutzt fetchAndValidateDriveItem(..., "download") → Input‑Subtree Pflicht. Code: sp_download_protocol.ts, scope.ts.
+Output‑Only Writes: Upload nutzt nur scope.outputFolderId und validierte Dateinamen. Code: minutes_render_and_upload_docx.ts, filename.ts.
+Pagination‑Safety: Cursor‑nextLink ist host/path‑allowlisted. Code: cursor.ts, genutzt in sp_list_protocols.ts.
+Größenlimit beim Download: MAX_DOWNLOAD_BYTES. Code: sp_download_protocol.ts, Konfig in config.ts.
+Env‑Variablen
+
+Happy Path (per_user, Graph, HTTP):
+MODE=graph, SCOPE_MODE=per_user, GRAPH_AUTH_MODE=delegated, DESTINATION_NAME, TENANT_ID, CLIENT_ID, CLIENT_SECRET, SITE_ID, DRIVE_ID, DOCX_TEMPLATE_PATH, MCP_HTTP_PORT. Optional: MCP_HTTP_HOST (default 0.0.0.0), MCP_ALLOWED_HOSTS, MCP_ALLOWED_ORIGINS, OUTPUT_FILENAME_PATTERN, LOG_LEVEL, MAX_DOWNLOAD_BYTES. Quelle: config.ts, README.md.
+Fixed Scope (Graph):
+Alles aus Graph + zusätzlich INPUT_FOLDER_ID, OUTPUT_FOLDER_ID. Quelle: config.ts.
+Local (stdio/local FS):
+MODE=local, LOCAL_INPUT_DIR, LOCAL_OUTPUT_DIR, DOCX_TEMPLATE_PATH, optional OUTPUT_FILENAME_PATTERN, LOG_LEVEL, MAX_DOWNLOAD_BYTES. Quelle: config.ts.
+Nur für local/fixed Tests:
+ALLOW_X_USER_TOKEN=true (Fallback ohne Bearer), XSUAA_JWT (stdio‑Fallback). In Prod gesperrt. Quelle: config.ts, README.md.
+ASCII‑Flow A: per_user sp_list_protocols
+
+Client/Host
+  | Authorization: Bearer <JWT>
+  v
+MCP Server (HTTP /mcp)
+  | extractBearerToken -> req.auth.token
+  | StreamableHTTP -> extra.authInfo.token
+  v
+buildContext (per_user)
+  | getUserIdentityFromJwt -> userKey
+  | getDelegatedGraphToken (Destination)
+  | initUserScope -> /LillyMinutes/{userKey}/input
+  v
+sp_list_protocols
+  | Graph: /drives/{driveId}/items/{inputFolderId}/children
+  v
+SharePoint (via Microsoft Graph)
+ASCII‑Flow B: per_user minutes_render_and_upload_docx
+
+Client/Host
+  | tools/call minutes_render_and_upload_docx (minutes + source)
+  v
+MCP Server
+  | buildContext (per_user)
+  | fetchAndValidateDriveItem (input transcript + ETag)
+  | renderMinutesDocx (Docxtemplater)
+  | uploadToOutputFolder (Graph)
+  v
+SharePoint (via Microsoft Graph) -> /LillyMinutes/{userKey}/Output
+
+
+
+Offene Entscheidungen/To‑Dos (nur aus Repo)
+
+Code-seitig wären als nächste saubere Schritte: persistentes Audit (Compliance), optional JWKS-Signaturprüfung (Defence-in-depth) und optional härtere Host/Origin-Policy (Absicherung gegen Fehl-Exposure). Der Kernschutz kommt primär über AppRouter + delegated Graph + per-user Scope-Guards.
+

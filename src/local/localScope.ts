@@ -23,7 +23,9 @@ export async function initLocalGraphAndScope(config: LocalConfig, log: pino.Logg
     inputFolderId: LOCAL_INPUT_FOLDER_ID,
     outputFolderId: LOCAL_OUTPUT_FOLDER_ID,
     inputPrefix: `/drives/${LOCAL_DRIVE_ID}/root:/${inputFolderName}`,
-    outputPrefix: `/drives/${LOCAL_DRIVE_ID}/root:/${outputFolderName}`
+    outputPrefix: `/drives/${LOCAL_DRIVE_ID}/root:/${outputFolderName}`,
+    userKey: "local",
+    userEmail: null
   };
 
   const graph = await createLocalGraph(

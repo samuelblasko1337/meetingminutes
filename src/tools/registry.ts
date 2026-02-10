@@ -4,6 +4,7 @@ import { z, type ZodTypeAny } from "zod";
 import type { AppConfig } from "../config.js";
 import type { Graph } from "../graph/client.js";
 import type { Scope } from "../sharepoint/scope.js";
+import type { UserIdentity } from "../auth/userIdentity.js";
 import { AppError } from "../utils/errors.js";
 
 import { sp_list_protocols, SpListProtocolsInputSchema } from "./sp_list_protocols.js";
@@ -16,6 +17,7 @@ export type ToolContext = {
   scope: Scope;
   log: pino.Logger;
   config: AppConfig;
+  user?: UserIdentity;
 };
 
 export type SchemaSummary = {
