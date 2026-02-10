@@ -1,5 +1,4 @@
 // FILE: src/tools/minutes_render_and_upload_docx.ts
-import { z } from "zod";
 import type pino from "pino";
 import type { Graph } from "../graph/client.js";
 import type { Scope } from "../sharepoint/scope.js";
@@ -15,8 +14,6 @@ import {
   withVersionSuffix
 } from "../utils/filename.js";
 import type { DriveItem } from "../sharepoint/driveItem.js";
-
-const Input = z.unknown();
 
 async function getItemByPath(graph: Graph, driveId: string, folderId: string, fileName: string): Promise<DriveItem | null> {
   const select = "$select=id,name,eTag,lastModifiedDateTime,webUrl,parentReference,file,folder";
@@ -56,13 +53,6 @@ export async function minutes_render_and_upload_docx(
   templatePath: string,
   filenamePattern: string
 ) {
-  const inParsed = Input.safeParse(rawInput);
-  if (!inParsed.success) {
-    throw new AppError(400, "ValidationError", "Invalid input", {
-      issues: inParsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message }))
-    });
-  }
-
   const parsed = Tool3InputSchema.safeParse(rawInput);
   if (!parsed.success) {
     throw new AppError(400, "ValidationError", "Minutes validation failed", {

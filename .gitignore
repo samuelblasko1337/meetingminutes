@@ -4,3 +4,5 @@ dist/
 local_outputs/
 *.docx
 .DS_Store
+.env.local
+.env.graph
