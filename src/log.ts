@@ -11,7 +11,6 @@ export function createLogger(level: "debug" | "info" | "warn" | "error") {
       messageKey: "msg",
       redact: {
         paths: [
-          "CLIENT_SECRET",
           "req.headers.authorization",
           "req.headers.Authorization",
           "*.authorization",

@@ -49,6 +49,6 @@ export function withVersionSuffix(fileName: string, version: number): string {
 }
 
 export function encodePathSegment(s: string): string {
-  // fileName may contain spaces; Graph path addressing requires URL encoding
+  // fileName may contain spaces; use URL encoding when used in URLs
   return encodeURIComponent(s);
 }

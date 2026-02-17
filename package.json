@@ -1,26 +1,25 @@
 {
-  "name": "mcp-sharepoint-minutes-gateway",
+  "name": "mcp-minutes-gateway",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "MCP Server: allowlisted SharePoint gateway + deterministic DOCX minutes generator",
+  "description": "MCP Server: deterministic DOCX minutes generator with HTTP download link",
   "license": "MIT",
   "engines": {
     "node": ">=20"
   },
-  "scripts": {
+    "scripts": {
     "dev": "tsx src/index.ts",
+    "dev:graph": "node --env-file=.env.graph --import tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "lint": "node -e \"console.log('lint: (optional) add eslint if you want')\"",
-    "check:determinism": "tsx scripts/check_determinism.ts"
+    "check:determinism": "tsx scripts/check_determinism.ts",
+    "test:contract": "tsx scripts/contract_test_minutes_tool.ts"
   },
   "dependencies": {
-    "@azure/identity": "^4.6.0",
-    "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "docxtemplater": "^3.50.0",
-    "mammoth": "^1.9.0",
     "pino": "^9.6.0",
     "pizzip": "^3.2.0",
     "zod": "^3.24.1"

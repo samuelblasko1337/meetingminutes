@@ -1,5 +1,5 @@
 // Minimal HTTP smoke test for per_user MCP flow (Streamable HTTP).
-// Verifies Authorization header propagation and MCP session handling.
+// Verifies MCP HTTP transport and session handling.
 
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 
@@ -178,10 +178,9 @@ async function postJsonRpc(
 
 async function main() {
   if (!TOKEN) {
-    fail("Missing token. Set MCP_BEARER_TOKEN (or BEARER_TOKEN/USER_JWT/ACCESS_TOKEN).");
+    warn("No bearer token set. Proceeding without Authorization header.");
   }
-  if (process.env.XSUAA_JWT) {
-    warn("XSUAA_JWT is set in this shell -> nicht E2E auth test (fallback möglich).");
+
   }
 
   console.log(`[info] MCP_URL: ${MCP_URL}`);
@@ -237,12 +236,12 @@ async function main() {
   const tools = listRes.response.result?.tools ?? [];
   console.log(`[ok] tools/list -> ${tools.length} tools`);
 
-  // 3) tools/call sp_list_protocols
+  // 3) tools/call tool_help
   const callReq: JsonRpcRequest = {
     jsonrpc: "2.0",
     id: 3,
     method: "tools/call",
-    params: { name: "sp_list_protocols", arguments: { pageSize: 1 } }
+    params: { name: "tool_help", arguments: { toolName: "minutes_render_and_upload_docx" } }
   };
   const callRes = await postJsonRpc(callReq, sessionId, protocolVersion);
   if (callRes.response.error) {
@@ -263,16 +262,19 @@ async function main() {
   }
 
   if (callRes.response.result?.isError) {
-    fail(`sp_list_protocols failed: ${JSON.stringify(payload ?? callRes.response.result, null, 2)}`);
+    fail(`tool_help failed: ${JSON.stringify(payload ?? callRes.response.result, null, 2)}`);
   }
 
-  const items = payload?.items ?? [];
-  console.log(`[ok] sp_list_protocols -> items=${items.length}`);
+  const tool = payload?.tool ?? null;
+  if (!tool?.name) {
+    fail(`tool_help returned unexpected payload: ${JSON.stringify(payload, null, 2)}`);
+  }
+  console.log(`[ok] tool_help -> ${tool.name}`);
 
   console.log("\nSummary:");
   console.log(`- sessionId: ${sessionId ?? "(stateless)"}`);
   console.log(`- tools/list: ${tools.length} tools`);
-  console.log(`- sp_list_protocols: items=${items.length}`);
+  console.log(`- tool_help: ${tool.name}`);
   console.log(
     "- Check server log: authSource=header, userKey != null, input/output folder IDs set, prefixes logged."
   );

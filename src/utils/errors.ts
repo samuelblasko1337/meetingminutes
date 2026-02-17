@@ -7,7 +7,6 @@ export type AppErrorCode =
   | "NotFound"
   | "ValidationError"
   | "TooManyRequests"
-  | "GraphError"
   | "Conflict"
   | "BadRequest"
   | "PayloadTooLarge"
@@ -33,7 +32,7 @@ export function zodToValidationDetails(err: ZodError) {
   }));
 }
 
-export function asToolErrorPayload(toolName: string, err: unknown) {
+export function asToolErrorPayload(toolName: string, err: unknown, requestId?: string) {
   if (err instanceof AppError) {
     return {
       error: {
@@ -41,6 +40,7 @@ export function asToolErrorPayload(toolName: string, err: unknown) {
         code: err.code,
         message: err.message,
         toolName,
+        requestId: requestId ?? null,
         details: err.details ?? null
       }
     };
@@ -52,6 +52,7 @@ export function asToolErrorPayload(toolName: string, err: unknown) {
       code: "InternalError",
       message: "Unexpected server error",
       toolName,
+      requestId: requestId ?? null,
       details: null
     }
   };

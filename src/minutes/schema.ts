@@ -35,9 +35,12 @@ export const LIMITS = {
   summaryMax: 10,
   summaryItemLenMax: 300,
 
+  decisionsMax: 50,
   decisionTextLenMax: 500,
+  actionsMax: 50,
   actionTaskLenMax: 500,
   actionOwnerLenMax: 80,
+  openQuestionsMax: 50,
   openQuestionTextLenMax: 500,
 
   evidenceItemLenMax: 300
@@ -71,46 +74,51 @@ export const MinutesSchema = z
     attendees: z.array(z.string().min(1).max(LIMITS.attendeeLenMax)).max(LIMITS.attendeesMax),
     summary: z.array(z.string().min(1).max(LIMITS.summaryItemLenMax)).max(LIMITS.summaryMax),
 
-    decisions: z.array(
-      z.object({
-        text: z.string().min(1).max(LIMITS.decisionTextLenMax),
-        evidence: EvidenceArray
-      })
-    ),
+    decisions: z
+      .array(
+        z.object({
+          text: z.string().min(1).max(LIMITS.decisionTextLenMax),
+          evidence: EvidenceArray
+        })
+      )
+      .max(LIMITS.decisionsMax),
 
-    actions: z.array(
-      z.object({
-        task: z.string().min(1).max(LIMITS.actionTaskLenMax),
-        owner: z.string().min(1).max(LIMITS.actionOwnerLenMax),
-        due: NullishStringToNull(DateYYYYMMDD.nullable()),
-        evidence: EvidenceArray
-      })
-    ),
+    actions: z
+      .array(
+        z.object({
+          task: z.string().min(1).max(LIMITS.actionTaskLenMax),
+          owner: z.string().min(1).max(LIMITS.actionOwnerLenMax),
+          due: NullishStringToNull(DateYYYYMMDD.nullable()),
+          evidence: EvidenceArray
+        })
+      )
+      .max(LIMITS.actionsMax),
 
-    open_questions: z.array(
-      z.object({
-        text: z.string().min(1).max(LIMITS.openQuestionTextLenMax),
-        evidence: EvidenceArray
-      })
-    )
+    open_questions: z
+      .array(
+        z.object({
+          text: z.string().min(1).max(LIMITS.openQuestionTextLenMax),
+          evidence: EvidenceArray
+        })
+      )
+      .max(LIMITS.openQuestionsMax)
   })
   .strict();
 
 export const Tool3InputSchema = z
   .object({
-    source: JsonStringToObject(
-      z.object({
-        transcriptId: z.string().min(1),
-        transcriptEtag: z.string().min(1),
-        transcriptName: z.string().min(1)
-      }).strict()
-    ),
     minutes: JsonStringToObject(MinutesSchema),
     output: JsonStringToObject(
-      z.object({
-        fileName: NullishStringToNull(z.string().min(1).max(120).nullable()).optional()
-      }).strict()
-    )
+      z
+        .object({
+          fileName: NullishStringToNull(z.string().min(1).max(120).nullable()).optional()
+        })
+        .strict()
+    ).optional(),
+    sourceText: NullishStringToNull(z.string().min(1).max(200000)).optional(),
+    trace: JsonStringToObject(
+      z.union([z.string().min(1).max(2000), z.record(z.string(), z.unknown())])
+    ).optional()
   })
   .strict();
 

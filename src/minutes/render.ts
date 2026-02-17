@@ -6,15 +6,31 @@ import type { Minutes } from "./schema.js";
 
 export type RenderInput = {
   minutes: Minutes;
-  trace: {
-    transcriptId: string;
-    transcriptEtag: string;
-    transcriptName: string;
-  };
+  trace?: string | Record<string, unknown> | null;
 };
 
 function dueDisplay(due: string | null): string {
   return due ? due : "—";
+}
+
+function stableStringify(obj: Record<string, unknown>): string {
+  const entries = Object.entries(obj).sort(([a], [b]) => a.localeCompare(b));
+  const normalized: Record<string, unknown> = {};
+  for (const [k, v] of entries) normalized[k] = v;
+  return JSON.stringify(normalized);
+}
+
+function formatTrace(trace?: string | Record<string, unknown> | null): string {
+  if (!trace) return "";
+  if (typeof trace === "string") return trace;
+  const t = trace as Record<string, unknown>;
+  const tid = typeof t.transcriptId === "string" ? t.transcriptId : null;
+  const etag = typeof t.transcriptEtag === "string" ? t.transcriptEtag : null;
+  const name = typeof t.transcriptName === "string" ? t.transcriptName : null;
+  if (tid || etag || name) {
+    return `source=${tid ?? ""} etag=${etag ?? ""} name=${name ?? ""}`.trim();
+  }
+  return stableStringify(t);
 }
 
 export function renderMinutesDocx(templatePath: string, input: RenderInput): Buffer {
@@ -47,7 +63,7 @@ export function renderMinutesDocx(templatePath: string, input: RenderInput): Buf
       text: q.text,
       evidence: q.evidence
     })),
-    trace: `source=${input.trace.transcriptId} etag=${input.trace.transcriptEtag} name=${input.trace.transcriptName}`
+    trace: formatTrace(input.trace)
   };
 
   doc.render(data);
