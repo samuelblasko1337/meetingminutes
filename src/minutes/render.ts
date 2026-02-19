@@ -9,6 +9,22 @@ export type RenderInput = {
   trace?: string | Record<string, unknown> | null;
 };
 
+let cachedTemplatePath: string | null = null;
+let cachedTemplateBuf: Buffer | null = null;
+
+function loadTemplate(templatePath: string): Buffer {
+  if (process.env.NODE_ENV !== "production") {
+    return fs.readFileSync(templatePath);
+  }
+  if (cachedTemplatePath === templatePath && cachedTemplateBuf) {
+    return cachedTemplateBuf;
+  }
+  const buf = fs.readFileSync(templatePath);
+  cachedTemplatePath = templatePath;
+  cachedTemplateBuf = buf;
+  return buf;
+}
+
 function dueDisplay(due: string | null): string {
   return due ? due : "—";
 }
@@ -34,7 +50,7 @@ function formatTrace(trace?: string | Record<string, unknown> | null): string {
 }
 
 export function renderMinutesDocx(templatePath: string, input: RenderInput): Buffer {
-  const templateBuf = fs.readFileSync(templatePath);
+  const templateBuf = loadTemplate(templatePath);
 
   // Deterministic: no timestamps injected; zip is derived from the template + stable XML changes
   const zip = new PizZip(templateBuf);

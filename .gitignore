@@ -3,5 +3,4 @@ dist/
 .env
 *.docx
 .DS_Store
-.env.local
 .env.graph

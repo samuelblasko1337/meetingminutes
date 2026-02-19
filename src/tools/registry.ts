@@ -1,9 +1,10 @@
 import type pino from "pino";
 import { z, type ZodTypeAny } from "zod";
-import type pino from "pino";
 
 import type { AppConfig } from "../config.js";
 import { AppError } from "../utils/errors.js";
+import type { StorageBackend } from "../storage/storage.js";
+import type { VerifiedJwt } from "../auth/jwt.js";
 
 import { minutes_render_and_upload_docx } from "./minutes_render_and_upload_docx.js";
 import { Tool3InputSchema } from "../minutes/schema.js";
@@ -12,6 +13,8 @@ export type ToolContext = {
   log: pino.Logger;
   config: AppConfig;
   downloadBaseUrl: string;
+  storage: StorageBackend;
+  auth: VerifiedJwt | null;
 };
 
 export type SchemaSummary = {
@@ -34,7 +37,7 @@ let tools: ToolDef[] = [];
 const baseTools: ToolDef[] = [
   {
     name: "minutes_render_and_upload_docx",
-    description: "Validate minutes, render DOCX from template, upload to OUTPUT_FOLDER_ID only, return download link.",
+    description: "Validate minutes, render DOCX from template, store and return a download link.",
     inputSchema: Tool3InputSchema,
     schemaSummary: {
       required: ["minutes"],
@@ -43,7 +46,10 @@ const baseTools: ToolDef[] = [
         "no file ID required",
         "fields can be JSON-encoded strings",
         "date format: YYYY-MM-DD",
-        "fileName must end with .docx"
+        "fileName must end with .docx",
+        "summary/decisions/actions/open_questions must be non-empty",
+        "each decisions/actions/open_questions item requires evidence (at least 1)",
+        "if none, use explicit 'Keine ...' with evidence 'Transkript'"
       ]
     },
     examples: [
@@ -67,7 +73,9 @@ const baseTools: ToolDef[] = [
         requestId,
         ctx.config.DOCX_TEMPLATE_PATH,
         ctx.config.OUTPUT_FILENAME_PATTERN,
-        ctx.downloadBaseUrl
+        ctx.downloadBaseUrl,
+        ctx.storage,
+        ctx.auth?.sub ?? null
       )
   }
 ];

@@ -206,7 +206,10 @@ async function main() {
       MCP_HTTP_HOST: HOST,
       MCP_HTTP_PORT: String(PORT),
       DOCX_TEMPLATE_PATH: templatePath,
-      LOG_LEVEL: "info"
+      LOG_LEVEL: "info",
+      MCP_REQUIRE_AUTH: "false",
+      DOWNLOAD_REQUIRE_AUTH: "false",
+      DOWNLOAD_BACKEND: "memory"
     },
     stdio: ["ignore", "pipe", "pipe"]
   });

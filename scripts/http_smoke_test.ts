@@ -181,8 +181,6 @@ async function main() {
     warn("No bearer token set. Proceeding without Authorization header.");
   }
 
-  }
-
   console.log(`[info] MCP_URL: ${MCP_URL}`);
 
   let sessionId: string | null = null;

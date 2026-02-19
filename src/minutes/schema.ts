@@ -72,7 +72,10 @@ export const MinutesSchema = z
     title: z.string().min(1).max(140),
     date: DateYYYYMMDD,
     attendees: z.array(z.string().min(1).max(LIMITS.attendeeLenMax)).max(LIMITS.attendeesMax),
-    summary: z.array(z.string().min(1).max(LIMITS.summaryItemLenMax)).max(LIMITS.summaryMax),
+    summary: z
+      .array(z.string().min(1).max(LIMITS.summaryItemLenMax))
+      .min(1, "summary must contain at least 1 item")
+      .max(LIMITS.summaryMax),
 
     decisions: z
       .array(
@@ -80,6 +83,10 @@ export const MinutesSchema = z
           text: z.string().min(1).max(LIMITS.decisionTextLenMax),
           evidence: EvidenceArray
         })
+      )
+      .min(
+        1,
+        "decisions must contain at least 1 item (extract from transcript; if none, add 'Keine Entscheidungen')"
       )
       .max(LIMITS.decisionsMax),
 
@@ -92,6 +99,7 @@ export const MinutesSchema = z
           evidence: EvidenceArray
         })
       )
+      .min(1, "actions must contain at least 1 item (extract from transcript; if none, add 'Keine Aktionen')")
       .max(LIMITS.actionsMax),
 
     open_questions: z
@@ -100,6 +108,10 @@ export const MinutesSchema = z
           text: z.string().min(1).max(LIMITS.openQuestionTextLenMax),
           evidence: EvidenceArray
         })
+      )
+      .min(
+        1,
+        "open_questions must contain at least 1 item (extract from transcript; if none, add 'Keine offenen Fragen')"
       )
       .max(LIMITS.openQuestionsMax)
   })

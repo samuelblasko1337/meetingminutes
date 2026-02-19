@@ -4,7 +4,7 @@ import { AppError, zodToValidationDetails } from "../utils/errors.js";
 import { Tool3InputSchema } from "../minutes/schema.js";
 import { renderMinutesDocx } from "../minutes/render.js";
 import { applyFilenamePattern, sanitizeTitleForFilename, validateOverrideFilename } from "../utils/filename.js";
-import { putDownload } from "../storage/downloadStore.js";
+import type { StorageBackend } from "../storage/storage.js";
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -14,7 +14,9 @@ export async function minutes_render_and_upload_docx(
   requestId: string,
   templatePath: string,
   filenamePattern: string,
-  downloadBaseUrl: string
+  downloadBaseUrl: string,
+  storage: StorageBackend,
+  ownerSub: string | null
 ) {
   const parsed = Tool3InputSchema.safeParse(rawInput);
   if (!parsed.success) {
@@ -43,9 +45,15 @@ export async function minutes_render_and_upload_docx(
   }
 
   const startUpload = Date.now();
-  const downloadId = putDownload(fileName, docx, DOCX_MIME);
-  const downloadUrl = `${downloadBaseUrl}/download/${downloadId}`;
+  const putResult = await storage.put({
+    fileName,
+    content: docx,
+    mimeType: DOCX_MIME,
+    ownerSub
+  });
   const durationMs = Date.now() - startUpload;
+  const downloadUrl =
+    putResult.type === "local" ? `${downloadBaseUrl}/download/${encodeURIComponent(putResult.downloadId)}` : putResult.url;
 
   log.info({
     requestId,
@@ -54,7 +62,8 @@ export async function minutes_render_and_upload_docx(
     durationMs,
     outputFileName: fileName,
     size: docx.length,
-    downloadLinkSource: "local",
+    downloadLinkSource: putResult.type,
+    downloadExpiresAt: new Date(putResult.expiresAt).toISOString(),
     audit: {
       action: "render",
       timestamp: new Date().toISOString()

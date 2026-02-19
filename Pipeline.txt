@@ -16,7 +16,8 @@ PRIMARY Workflow (Claude Desktop):
 Nutzer zieht Transcript-Datei in Claude Desktop (Chat).
 LLM extrahiert strukturierte Minutes (gem. Schema) aus dem Chat-Kontext.
 minutes_render_and_upload_docx validiert + rendert aus Template -> gibt Download-Link zur DOCX.
-Der Server hostet die DOCX temporaer unter /download/<id>.
+Bei DOWNLOAD_BACKEND=memory hostet der Server die DOCX temporaer unter /download/<id>.
+Bei DOWNLOAD_BACKEND=objectstore wird eine Presigned URL zurueckgegeben.
 
 Schema/Constraints (wichtigste):
 
@@ -34,7 +35,7 @@ Contract Test vorhanden: npm run test:contract (validiert text-only Link + echte
 
 1. Client/Host ruft MCP per HTTP `/mcp` mit JSON-RPC auf.  
 2. minutes_render_and_upload_docx validiert die Minutes und rendert DOCX.  
-3. DOCX wird temporaer im Server gehalten (RAM) und ein Link `/download/<id>` ausgegeben.  
+3. DOCX wird entweder temporaer im Server gehalten (RAM) oder in Object Store geladen; Link wird ausgegeben.  
 4. Client laedt die DOCX ueber den Link herunter und kann sie manuell hochladen.  
 
 WORKFLOW (1..N) ? End?to?End bis DOCX Download
@@ -44,7 +45,7 @@ Client/Host
   v
 MCP Server
   | renderMinutesDocx (Docxtemplater)
-  | putDownload (in-memory store)
+  | putDownload (in-memory store) oder Object Store presigned URL
   v
 HTTP Download: /download/<id>
 
@@ -52,7 +53,8 @@ Code-Map (wo passiert was)
 
 Server Start/Transport: index.ts (main, StreamableHTTPServerTransport, /download route).
 DOCX Rendering: render.ts (renderMinutesDocx).
-Download Store: storage/downloadStore.ts (put/get download entries).
+Download Store: storage/downloadStore.ts (memory) / storage/objectStore.ts (presigned URLs).
+Storage Router: storage/storage.ts.
 Tool: minutes_render_and_upload_docx.ts (validate + render + link).
 
 Env-Variablen
@@ -66,4 +68,8 @@ Optional:
 - OUTPUT_FILENAME_PATTERN
 - LOG_LEVEL
 - ALLOW_X_USER_TOKEN (lokal, nicht Production)
+- MCP_PUBLIC_BASE_URL / TRUST_PROXY_HEADERS
+- MCP_REQUIRE_AUTH / DOWNLOAD_REQUIRE_AUTH
+- DOWNLOAD_BACKEND / DOWNLOAD_TTL_MS
+- JWT_ISSUER / JWT_AUDIENCE / JWT_JWKS_URL / JWT_REQUIRED_SCOPES
 
